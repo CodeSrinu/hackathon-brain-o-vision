@@ -2,9 +2,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { signIn, signOut, useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
-import LoginScreen from '@/components/mobile/LoginScreen';
+import SimpleLoginScreen from '@/components/mobile/SimpleLoginScreen';
 import OnboardingScreen from '@/components/mobile/OnboardingScreen';
 import PsychologyQuiz from '@/components/mobile/PsychologyQuiz';
 import ResultsPage from '@/components/mobile/ResultsPage';
@@ -20,8 +19,8 @@ export default function Home() {
 }
 
 function HomePageContent() {
-  const { data: session, status } = useSession();
   const searchParams = useSearchParams();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentStep, setCurrentStep] = useState<'login' | 'onboarding' | 'psychologyQuiz' | 'results' | 'roleDeepDive'>('login');
   const [onboardingData, setOnboardingData] = useState<{
     language: string;
@@ -35,9 +34,14 @@ function HomePageContent() {
   const [personaContext, setPersonaContext] = useState<string>('');
   const [selectedRoleRank, setSelectedRoleRank] = useState<number>(1);
 
-  // Check if user is already logged in
+  // Check if user is already logged in on mount
   useEffect(() => {
-    if (status === 'authenticated') {
+    const userEmail = localStorage.getItem('userEmail');
+    const userName = localStorage.getItem('userName');
+
+    if (userEmail && userName) {
+      setIsAuthenticated(true);
+
       // Check for deep-dive parameters
       const deepDive = searchParams?.get('deepDive');
       if (deepDive === 'true') {
@@ -45,9 +49,7 @@ function HomePageContent() {
         const roleName = searchParams?.get('roleName') || '';
         const personaContext = searchParams?.get('personaContext') || '';
         const roleRank = parseInt(searchParams?.get('roleRank') || '1', 10);
-        
-        console.log('Deep-dive parameters found:', { roleId, roleName, personaContext, roleRank });
-        
+
         if (roleId && roleName) {
           setSelectedRoleId(roleId);
           setSelectedRoleName(roleName);
@@ -57,34 +59,23 @@ function HomePageContent() {
           return;
         }
       }
-      
-      // If we're still on the login step, check if we should skip onboarding
-      if (currentStep === 'login') {
-        // Check if we should skip onboarding (coming from goal validation)
-        const skipOnboarding = searchParams?.get('skipOnboarding') === 'true';
-        
-        if (skipOnboarding) {
-          setCurrentStep('psychologyQuiz');
-        } else {
-          setCurrentStep('onboarding');
-        }
-      }
-    } else if (status === 'unauthenticated') {
-      // If user is not authenticated, make sure we're on login step
-      if (currentStep !== 'login') {
-        setCurrentStep('login');
+
+      // Check if we should skip onboarding
+      const skipOnboarding = searchParams?.get('skipOnboarding') === 'true';
+      if (skipOnboarding) {
+        setCurrentStep('psychologyQuiz');
+      } else {
+        setCurrentStep('onboarding');
       }
     }
-  }, [status, currentStep, searchParams]);
+  }, [searchParams]);
 
-  const handleGoogleLogin = () => {
-    // Clear any existing onboarding data to ensure user goes through onboarding
-    localStorage.removeItem('userLanguage');
-    localStorage.removeItem('userState');
-    localStorage.removeItem('userGoal');
-    localStorage.removeItem('psychologyAnswers');
-    
-    signIn('google', { callbackUrl: '/' });
+  const handleLogin = (email: string, name: string) => {
+    // Store user information
+    localStorage.setItem('userEmail', email);
+    localStorage.setItem('userName', name);
+    setIsAuthenticated(true);
+    setCurrentStep('onboarding');
   };
 
   const handleOnboardingComplete = (data: {
@@ -96,11 +87,11 @@ function HomePageContent() {
     setOnboardingData(data);
     localStorage.setItem('userLanguage', data.language);
     localStorage.setItem('userState', data.state);
-    
+
     if (data.hasGoal) {
       localStorage.setItem('userGoal', data.goal);
     }
-    
+
     // Always show the psychology quiz
     setCurrentStep('psychologyQuiz');
   };
@@ -128,25 +119,27 @@ function HomePageContent() {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('userName');
     localStorage.removeItem('userLanguage');
     localStorage.removeItem('userState');
     localStorage.removeItem('userGoal');
     localStorage.removeItem('psychologyAnswers');
+    setIsAuthenticated(false);
     setOnboardingData(null);
     setCurrentStep('login');
-    signOut({ callbackUrl: '/' });
   };
 
   // Show login screen if user is not authenticated
-  if (status === 'unauthenticated' || currentStep === 'login') {
-    return <LoginScreen />;
+  if (!isAuthenticated || currentStep === 'login') {
+    return <SimpleLoginScreen onLogin={handleLogin} />;
   }
 
   // Show onboarding screen
   if (currentStep === 'onboarding') {
     return (
-      <OnboardingScreen 
-        onContinue={handleOnboardingComplete} 
+      <OnboardingScreen
+        onContinue={handleOnboardingComplete}
       />
     );
   }
@@ -154,7 +147,7 @@ function HomePageContent() {
   // Show psychology quiz
   if (currentStep === 'psychologyQuiz') {
     return (
-      <PsychologyQuiz 
+      <PsychologyQuiz
         onComplete={handlePsychologyQuizComplete}
         onBack={() => setCurrentStep('onboarding')}
       />
@@ -164,7 +157,7 @@ function HomePageContent() {
   // Show results page with AI-generated recommendations
   if (currentStep === 'results') {
     return (
-      <ResultsPage 
+      <ResultsPage
         answers={psychologyAnswers}
         onBack={() => setCurrentStep('psychologyQuiz')}
         onSelectRole={handleRoleSelect}
@@ -176,7 +169,7 @@ function HomePageContent() {
   if (currentStep === 'roleDeepDive') {
     console.log('Rendering RoleDeepDivePage with props:', { selectedRoleId, selectedRoleName, personaContext, selectedRoleRank });
     return (
-      <RoleDeepDivePage 
+      <RoleDeepDivePage
         roleId={selectedRoleId}
         roleName={selectedRoleName}
         personaContext={personaContext}
