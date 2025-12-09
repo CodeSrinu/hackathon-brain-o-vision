@@ -2,7 +2,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
 import { saveQuizResponse } from '@/lib/userData';
 
 interface Persona {
@@ -37,7 +36,7 @@ export default function ResultsPage({ answers, onBack, onSelectRole }: ResultsPa
   // Convert frontend answers to backend format
   const convertAnswersForBackend = (frontendAnswers: Record<number, string | string[]>): Record<string, any> => {
     const backendAnswers: Record<string, any> = {};
-    
+
     // Map frontend question IDs to backend keys
     const questionIdMap: Record<number, string> = {
       1: 'childhoodInterests',
@@ -51,14 +50,14 @@ export default function ResultsPage({ answers, onBack, onSelectRole }: ResultsPa
       9: 'secretChoice',
       10: 'goalOwnership'
     };
-    
+
     Object.entries(frontendAnswers).forEach(([questionId, answer]) => {
       const backendKey = questionIdMap[parseInt(questionId)];
       if (backendKey) {
         backendAnswers[backendKey] = answer;
       }
     });
-    
+
     return backendAnswers;
   };
 
@@ -69,17 +68,19 @@ export default function ResultsPage({ answers, onBack, onSelectRole }: ResultsPa
         console.log("Fetching recommendations with answers:", answers);
         setLoading(true);
         setError(null);
-        
+
         // Convert answers to backend format
         const backendAnswers = convertAnswersForBackend(answers);
         console.log("Converted backend answers:", backendAnswers);
-        
+
         // Save quiz response to Firestore (non-blocking)
-        if (session?.user?.id) {
-          saveQuizResponse(session.user.id, backendAnswers)
+        // User ID from localStorage instead of session
+        const userEmail = localStorage.getItem('userEmail');
+        if (userEmail) {
+          saveQuizResponse(userEmail, backendAnswers)
             .catch(err => console.warn('Failed to save quiz response:', err));
         }
-        
+
         // Call our API to generate AI recommendations
         console.log("Calling /api/ai-recommendations...");
         const response = await fetch('/api/ai-recommendations', {
@@ -91,20 +92,20 @@ export default function ResultsPage({ answers, onBack, onSelectRole }: ResultsPa
         });
 
         console.log("API response status:", response.status);
-        
+
         if (!response.ok) {
           throw new Error(`API request failed with status ${response.status}`);
         }
 
         const aiResponse = await response.json();
         console.log("Received AI response:", aiResponse);
-        
+
         // Check if we got fallback data (predefined roles)
         const isFallbackData = aiResponse.personaName === "The Adaptive Explorer";
         if (isFallbackData) {
           console.log("WARNING: Returning fallback/predefined data instead of AI-generated content");
         }
-        
+
         // Transform AI response to our component state
         const transformedPersona: Persona = {
           id: 'ai-generated',
@@ -114,12 +115,12 @@ export default function ResultsPage({ answers, onBack, onSelectRole }: ResultsPa
           matchScore: 100,
           confidence: 'high'
         };
-        
+
         // Transform role reasons to focus on capabilities, skills, and powers
         const transformRoleReason = (reason: string): string => {
           // Remove direct references to quiz answers and rephrase to focus on capabilities
           let transformedReason = reason;
-          
+
           // Handle various patterns of direct references to user's answers
           if (transformedReason.includes("Your")) {
             // More general transformation that removes personal references
@@ -128,14 +129,14 @@ export default function ResultsPage({ answers, onBack, onSelectRole }: ResultsPa
               "With your unique combination of skills and talents, you're positioned for success in"
             );
           }
-          
+
           // Replace specific terms to focus on capabilities
           transformedReason = transformedReason
             .replace(/natural strengths/g, "inherent capabilities")
             .replace(/skills that make them well-suited/g, "abilities that align with")
             .replace(/directly referencing their specific quiz answers/g, "focusing on core competencies")
             .replace(/capabilities, skills, or natural strengths/g, "unique talents and abilities");
-          
+
           // If we still have direct personal references, rephrase more generally
           if (transformedReason.includes("Your") && transformedReason.includes("well-suited")) {
             transformedReason = "This career path aligns with your unique talents and offers opportunities to leverage your abilities.";
@@ -144,26 +145,26 @@ export default function ResultsPage({ answers, onBack, onSelectRole }: ResultsPa
           } else if (transformedReason.includes("Your") && transformedReason.includes("valuable for")) {
             transformedReason = "The skills you possess are highly valuable in this career domain.";
           }
-          
+
           return transformedReason;
         };
-        
+
         const transformedRoles: RoleMatch[] = aiResponse.recommendedRoles.map((role: any, index: number) => ({
           id: `role-${index}`,
           name: role.role,
           reason: transformRoleReason(role.reason),
           matchPercentage: 100 - (index * 10) // Decreasing percentages for lower ranked roles
         }));
-        
+
         console.log("Transformed persona:", transformedPersona);
         console.log("Transformed roles:", transformedRoles);
-        
+
         setPersona(transformedPersona);
         setRoles(transformedRoles);
       } catch (err) {
         console.error('Error fetching recommendations:', err);
         setError('Failed to generate recommendations. Please try again.');
-        
+
         // Fallback to sample data
         const samplePersona: Persona = {
           id: 'adaptive-explorer',
@@ -173,7 +174,7 @@ export default function ResultsPage({ answers, onBack, onSelectRole }: ResultsPa
           matchScore: 85,
           confidence: 'medium'
         };
-        
+
         const sampleRoles: RoleMatch[] = [
           {
             id: 'full-stack-developer',
@@ -206,7 +207,7 @@ export default function ResultsPage({ answers, onBack, onSelectRole }: ResultsPa
             matchPercentage: 68
           }
         ];
-        
+
         setPersona(samplePersona);
         setRoles(sampleRoles);
       } finally {
@@ -215,7 +216,7 @@ export default function ResultsPage({ answers, onBack, onSelectRole }: ResultsPa
     };
 
     fetchRecommendations();
-  }, [answers, session?.user?.id]);
+  }, [answers]);
 
   // Get strength icon
   const getStrengthIcon = (strength: string) => {
@@ -268,7 +269,7 @@ export default function ResultsPage({ answers, onBack, onSelectRole }: ResultsPa
                 <div className="h-full bg-blue-500 rounded-full w-3/4 animate-pulse"></div>
               </div>
             </div>
-            
+
             {/* Persona Card Skeleton */}
             <div className="rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 p-6 shadow-lg">
               <div className="flex flex-col items-center gap-4">
@@ -302,7 +303,7 @@ export default function ResultsPage({ answers, onBack, onSelectRole }: ResultsPa
                 ))}
               </div>
             </div>
-            
+
             {/* Info Card Skeleton */}
             <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
               <div className="flex items-start gap-3">
@@ -353,7 +354,7 @@ export default function ResultsPage({ answers, onBack, onSelectRole }: ResultsPa
       {/* Header with progress */}
       <header className="sticky top-0 z-10 bg-white shadow-sm">
         <div className="flex items-center p-4">
-          <button 
+          <button
             className="flex size-10 shrink-0 items-center justify-center text-slate-600 hover:bg-gray-100 rounded-full transition-colors"
             onClick={onBack}
           >
@@ -371,7 +372,7 @@ export default function ResultsPage({ answers, onBack, onSelectRole }: ResultsPa
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto p-4 pb-20">
         <div className="space-y-6">
-          
+
           {/* Persona Card with enhanced design */}
           <div className="rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 p-6 shadow-sm border border-blue-100">
             <div className="flex flex-col items-center gap-4">
@@ -386,10 +387,10 @@ export default function ResultsPage({ answers, onBack, onSelectRole }: ResultsPa
               <div className="flex flex-col gap-2 text-center">
                 <h2 className="text-xl font-bold text-slate-900">{userPersona.name}</h2>
                 <p className="text-sm text-slate-600">
-                  You have incredible potential in areas that align with your natural strengths: <span className="font-semibold text-blue-600">{userPersona.strengths.join(', ')}</span>. 
+                  You have incredible potential in areas that align with your natural strengths: <span className="font-semibold text-blue-600">{userPersona.strengths.join(', ')}</span>.
                   Based on your unique personality and values, these career paths would allow you to thrive and make a meaningful impact.
                 </p>
-                
+
                 {/* Strengths badges */}
                 <div className="flex flex-wrap justify-center gap-2 mt-2">
                   {userPersona.strengths.map((strength, index) => (
@@ -406,7 +407,7 @@ export default function ResultsPage({ answers, onBack, onSelectRole }: ResultsPa
           {/* Recommended Roles */}
           <div>
             <h3 className="text-lg font-bold text-slate-800 mb-4">Your Career Recommendations</h3>
-            
+
             <div className="space-y-3">
               {roles.map((role, index) => {
                 // Use your green shades for borders with decreasing intensity
@@ -417,16 +418,15 @@ export default function ResultsPage({ answers, onBack, onSelectRole }: ResultsPa
                   'border-2 border-[#99d999] border-opacity-15',   // #99d999 (light green) for #4
                   'border-2 border-[#ccf0cc] border-opacity-10'    // #ccf0cc (lightest green) for #5
                 ];
-                
+
                 // Same background as persona card
                 const bgClass = 'bg-gradient-to-r from-blue-50 to-indigo-50';
-                
+
                 return (
-                  <div 
+                  <div
                     key={role.id}
-                    className={`flex items-center gap-4 rounded-2xl p-4 transition-all duration-300 hover:shadow-sm cursor-pointer ${
-                      bgClass
-                    } ${borderClasses[index]}`}
+                    className={`flex items-center gap-4 rounded-2xl p-4 transition-all duration-300 hover:shadow-sm cursor-pointer ${bgClass
+                      } ${borderClasses[index]}`}
                     onClick={() => onSelectRole(role.id, role.name, userPersona.description, index + 1)}
                   >
                     <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 font-bold text-sm">
@@ -463,10 +463,10 @@ export default function ResultsPage({ answers, onBack, onSelectRole }: ResultsPa
           </div>
         </div>
       </main>
-      
+
       {/* Fixed Bottom Button */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-lg">
-        <button 
+        <button
           className="w-full py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-bold shadow-md hover:from-green-600 hover:to-green-700 transition-all duration-300"
           onClick={() => roles.length > 0 && onSelectRole(roles[0].id, roles[0].name, userPersona.description, 1)}
         >

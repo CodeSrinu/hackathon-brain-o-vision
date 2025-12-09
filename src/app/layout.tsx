@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import SessionProviderWrapper from "@/components/SessionProviderWrapper";
 import MobileNavigation from "@/components/mobile/MobileNavigation";
 
 export const metadata: Metadata = {
@@ -22,12 +21,10 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet" />
       </head>
       <body>
-        <SessionProviderWrapper>
-          <main className="pb-16">
-            {children}
-          </main>
-          <MobileNavigation />
-        </SessionProviderWrapper>
+        <main className="pb-16">
+          {children}
+        </main>
+        <MobileNavigation />
       </body>
     </html>
   );
