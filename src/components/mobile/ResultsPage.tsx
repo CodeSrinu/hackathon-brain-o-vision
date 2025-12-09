@@ -27,7 +27,6 @@ interface ResultsPageProps {
 }
 
 export default function ResultsPage({ answers, onBack, onSelectRole }: ResultsPageProps) {
-  const { data: session } = useSession();
   const [roles, setRoles] = useState<RoleMatch[]>([]);
   const [persona, setPersona] = useState<Persona | null>(null);
   const [loading, setLoading] = useState(true);
