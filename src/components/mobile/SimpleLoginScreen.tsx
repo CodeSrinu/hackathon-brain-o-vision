@@ -1,3 +1,4 @@
+// src/components/mobile/SimpleLoginScreen.tsx
 'use client';
 
 import { useState } from 'react';
@@ -7,8 +8,10 @@ interface SimpleLoginScreenProps {
 }
 
 export default function SimpleLoginScreen({ onLogin }: SimpleLoginScreenProps) {
-  const [email, setEmail] = useState('');
+  const [isLogin, setIsLogin] = useState(true);
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -16,13 +19,18 @@ export default function SimpleLoginScreen({ onLogin }: SimpleLoginScreenProps) {
     setError('');
 
     // Basic validation
-    if (!name.trim()) {
+    if (!isLogin && !name.trim()) {
       setError('Please enter your name');
       return;
     }
 
     if (!email.trim()) {
       setError('Please enter your email');
+      return;
+    }
+
+    if (!password.trim()) {
+      setError('Please enter your password');
       return;
     }
 
@@ -33,102 +41,132 @@ export default function SimpleLoginScreen({ onLogin }: SimpleLoginScreenProps) {
       return;
     }
 
-    // Store user info and proceed
-    onLogin(email, name);
+    // Simulate Auth
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('userEmail', email);
+      // For login mode, if we don't have a name, use a default or extract from email, or saved one
+      const savedName = localStorage.getItem('userName');
+      const userName = isLogin ? (savedName || name || email.split('@')[0]) : name;
+
+      localStorage.setItem('userName', userName);
+      onLogin(email, userName);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
-        {/* Logo/Header */}
-        <div className="text-center mb-8">
-          <div className="inline-block bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full p-4 mb-4">
-            <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-            </svg>
-          </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Career Advisor AI
-          </h1>
-          <p className="text-lg text-gray-600">
-            Discover your perfect career path with AI
-          </p>
+    <div className="min-h-screen bg-white flex flex-col p-4 font-manrope text-[#333333]">
+      {/* Header */}
+      <div className="flex items-center justify-center py-6">
+        <h2 className="text-[#333333] text-xl font-bold leading-tight tracking-[-0.015em]">Career Quest</h2>
+      </div>
+
+      {/* Welcome Section */}
+      <div className="text-center mb-8 mt-4">
+        <h1 className="text-[#333333] text-3xl font-bold leading-tight tracking-tight">
+          {isLogin ? 'Welcome Back!' : 'Create Account'}
+        </h1>
+        <p className="text-[#888888] text-lg font-normal leading-normal mt-2">
+          {isLogin ? 'Enter your details to continue.' : 'Start your career journey today.'}
+        </p>
+      </div>
+
+      {/* Form Sections */}
+      <div className="flex-1 flex flex-col justify-center max-w-md mx-auto w-full">
+        {/* Toggle Switch */}
+        <div className="flex bg-[#F5F5F5] p-1 rounded-xl mb-8">
+          <button
+            className={`flex-1 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${isLogin ? 'bg-white text-[#333333] shadow-sm' : 'text-[#888888]'
+              }`}
+            onClick={() => setIsLogin(true)}
+            type="button"
+          >
+            Log In
+          </button>
+          <button
+            className={`flex-1 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${!isLogin ? 'bg-white text-[#333333] shadow-sm' : 'text-[#888888]'
+              }`}
+            onClick={() => setIsLogin(false)}
+            type="button"
+          >
+            Sign Up
+          </button>
         </div>
 
-        {/* Login Form */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-6">
-            Get Started
-          </h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Name Input */}
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                Your Name
+          {/* Name Input (Only for Sign Up) */}
+          {!isLogin && (
+            <div className="animate-fade-in-up">
+              <label className="text-[#333333] text-base font-medium leading-normal pb-2 block" htmlFor="name">
+                Full Name
               </label>
               <input
                 type="text"
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Enter your full name"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                placeholder="Ex. John Doe"
+                className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#333333] focus:outline-0 focus:ring-0 border border-[#E0E0E0] bg-[#F5F5F5] focus:border-[#19b357] h-14 placeholder:text-[#888888] p-3.5 text-base font-normal leading-normal"
               />
             </div>
+          )}
 
-            {/* Email Input */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email Address
-              </label>
-              <input
-                type="email"
-                id="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your.email@example.com"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              />
+          {/* Email Input */}
+          <div>
+            <label className="text-[#333333] text-base font-medium leading-normal pb-2 block" htmlFor="email">
+              Email Address
+            </label>
+            <input
+              type="email"
+              id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="demo@example.com"
+              className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#333333] focus:outline-0 focus:ring-0 border border-[#E0E0E0] bg-[#F5F5F5] focus:border-[#19b357] h-14 placeholder:text-[#888888] p-3.5 text-base font-normal leading-normal"
+            />
+          </div>
+
+          {/* Password Input */}
+          <div>
+            <label className="text-[#333333] text-base font-medium leading-normal pb-2 block" htmlFor="password">
+              Password
+            </label>
+            <input
+              type="password"
+              id="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="password123"
+              className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#333333] focus:outline-0 focus:ring-0 border border-[#E0E0E0] bg-[#F5F5F5] focus:border-[#19b357] h-14 placeholder:text-[#888888] p-3.5 text-base font-normal leading-normal"
+            />
+          </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm font-medium animate-pulse">
+              {error}
             </div>
+          )}
 
-            {/* Error Message */}
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
-                {error}
-              </div>
-            )}
-
-            {/* Submit Button */}
+          {/* Submit Button */}
+          <div className="pt-4">
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transform hover:scale-105 transition-all duration-200 shadow-lg"
+              className="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg h-14 px-5 bg-[#19b357] text-white text-lg font-bold leading-normal tracking-[0.015em] hover:bg-[#159649] transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.98]"
             >
-              Start Your Journey →
+              {isLogin ? 'Log In' : 'Create Account'}
             </button>
-          </form>
+          </div>
+        </form>
 
-          {/* Info Text */}
-          <p className="text-sm text-gray-500 text-center mt-6">
-            Your information is used only to personalize your experience
-          </p>
-        </div>
-
-        {/* Feature highlights */}
-        <div className="mt-8 grid grid-cols-3 gap-4 text-center">
-          <div className="bg-white/50 backdrop-blur-sm rounded-lg p-4">
-            <div className="text-2xl mb-1">🎯</div>
-            <p className="text-xs text-gray-600">AI-Powered</p>
-          </div>
-          <div className="bg-white/50 backdrop-blur-sm rounded-lg p-4">
-            <div className="text-2xl mb-1">🚀</div>
-            <p className="text-xs text-gray-600">Free Forever</p>
-          </div>
-          <div className="bg-white/50 backdrop-blur-sm rounded-lg p-4">
-            <div className="text-2xl mb-1">✨</div>
-            <p className="text-xs text-gray-600">Personalized</p>
-          </div>
-        </div>
+        {/* Fake Footer Links */}
+        <p className="text-center text-[#888888] text-sm mt-8">
+          {isLogin ? (
+            <>Don't have an account? <span className="text-[#19b357] font-semibold cursor-pointer" onClick={() => setIsLogin(false)}>Sign Up</span></>
+          ) : (
+            <>Already have an account? <span className="text-[#19b357] font-semibold cursor-pointer" onClick={() => setIsLogin(true)}>Log In</span></>
+          )}
+        </p>
       </div>
     </div>
   );
